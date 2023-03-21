@@ -5,14 +5,15 @@
     <vendor>xbbljty</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.go</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
-    <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.xbbljty.gostructtojson.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-    </extensions>
-
-    <applicationListeners>
-        <listener class="com.github.xbbljty.gostructtojson.listeners.MyFrameStateListener" topic="com.intellij.ide.FrameStateListener"/>
-    </applicationListeners>
+    <actions>
+        <action id="GoStructToJSONAction" class="com.github.xbbljty.gostructtojson.actions.GoStructToJSONAction" text="生成JSON..."
+                description="Go struct to Json formatted string">
+            <add-to-group group-id="EditorPopupMenu2" anchor="first"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt J"/>
+        </action>
+    </actions>
 </idea-plugin>
