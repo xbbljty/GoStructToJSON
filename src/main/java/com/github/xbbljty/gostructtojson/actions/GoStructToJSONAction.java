@@ -14,11 +14,17 @@ import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.Nullable;
 
 import javax.activation.UnsupportedDataTypeException;
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
 public class GoStructToJSONAction extends AnAction {
+    static String MessageBoxTitle = "GoStructToJson";
+
     public void actionPerformed(AnActionEvent e) {
         Editor editor = e.getData(CommonDataKeys.EDITOR);
         PsiFile psiFile = e.getData(CommonDataKeys.PSI_FILE);
@@ -37,7 +43,7 @@ public class GoStructToJSONAction extends AnAction {
         }
 
         if (!(element.getParent() instanceof GoStructTypeImpl)) {
-            Messages.showErrorDialog("Not a struct", "GoStructToJSON");
+            Messages.showErrorDialog("Not a struct", MessageBoxTitle);
             return;
         }
 
@@ -47,16 +53,21 @@ public class GoStructToJSONAction extends AnAction {
         try {
             arrangeFields(navPsiElement, fields, out);
         } catch (UnsupportedDataTypeException ex) {
-            Messages.showErrorDialog("Unsupported type", "GoStructToJSON");
+            Messages.showErrorDialog("Unsupported type", MessageBoxTitle);
             return;
         }
         var jsonStr = JSON.toJSONString(out, true);
-        System.out.println(jsonStr);
+        Messages.showInfoMessage(jsonStr, MessageBoxTitle);
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(new StringSelection(jsonStr), null);
     }
 
     private void arrangeFields(PsiElement navPsiElement, List<GoFieldDeclaration> fields, HashMap<Object, Object> out) throws UnsupportedDataTypeException {
         for (var field : fields) {
             var key = getFieldName(field);
+            if (key.equals("-")) {
+                continue;
+            }
             Object value = arrangeType(navPsiElement, field.getType());
             out.put(key, value);
         }
@@ -72,7 +83,13 @@ public class GoStructToJSONAction extends AnAction {
             if (eleTp == null) {
                 return null;
             }
-            return arrangeType(navPsiElement, eleTp);
+            if (Objects.equals(eleTp.getText(), "byte")) {
+                return "";
+            } else {
+                var list = new ArrayList<>();
+                list.add(arrangeType(navPsiElement, eleTp));
+                return list;
+            }
         } else if (tp instanceof GoMapTypeImpl) {
             var kt = ((GoMapTypeImpl) tp).getKeyType();
             if (!GoTypeUtil.isBasicType(kt, navPsiElement)) {
@@ -98,13 +115,25 @@ public class GoStructToJSONAction extends AnAction {
     }
 
     private String getFieldName(GoFieldDeclaration field) {
-        var tag = field.getTag();
-        if (tag != null && !Objects.equals(tag.getValue("json"), "")) {
-            var tagStr = tag.getValue("json");
-            if (tagStr != null && !tagStr.equals("")) {
-                return tagStr.split(",")[0];
-            }
+        var ret = "-";
+        var fieldName = field.getText().split(" ")[0];
+        char c = fieldName.charAt(0);
+        if (!Character.isUpperCase(c)) {
+            return ret;
         }
-        return field.getText().split(" ")[0];
+
+        var tag = field.getTag();
+        if (tag != null) {
+            var jsonTagValue = tag.getValue("json");
+            if (jsonTagValue != null) {
+                var realTag = jsonTagValue.split(",")[0];
+                if (!realTag.equals("") && !realTag.equals("-")) {
+                    ret = realTag;
+                }
+            }
+        } else {
+            ret = fieldName;
+        }
+        return ret;
     }
 }
