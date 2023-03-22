@@ -1,9 +1,10 @@
 package com.github.xbbljty.gostructtojson.actions;
 
-import com.alibaba.fastjson.JSON;
 import com.goide.psi.GoFieldDeclaration;
 import com.goide.psi.GoType;
 import com.goide.psi.impl.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -13,7 +14,6 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.Nullable;
 
-import javax.activation.UnsupportedDataTypeException;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -31,6 +31,7 @@ public class GoStructToJSONAction extends AnAction {
         if (editor == null || psiFile == null) {
             return;
         }
+
         int offset = editor.getCaretModel().getOffset();
         PsiElement navPsiElement = psiFile.getNavigationElement();
         if (navPsiElement == null) {
@@ -52,17 +53,18 @@ public class GoStructToJSONAction extends AnAction {
         var out = new HashMap<>();
         try {
             arrangeFields(navPsiElement, fields, out);
-        } catch (UnsupportedDataTypeException ex) {
+        } catch (Exception ex) {
             Messages.showErrorDialog("Unsupported type", MessageBoxTitle);
             return;
         }
-        var jsonStr = JSON.toJSONString(out, true);
-        Messages.showInfoMessage(jsonStr, MessageBoxTitle);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        var jsonStr = gson.toJson(out);
+        Messages.showInfoMessage(jsonStr + "\nThe results have been copied, please paste from clipboard(Ctrl+V).", MessageBoxTitle);
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         clipboard.setContents(new StringSelection(jsonStr), null);
     }
 
-    private void arrangeFields(PsiElement navPsiElement, List<GoFieldDeclaration> fields, HashMap<Object, Object> out) throws UnsupportedDataTypeException {
+    private void arrangeFields(PsiElement navPsiElement, List<GoFieldDeclaration> fields, HashMap<Object, Object> out) throws Exception {
         for (var field : fields) {
             var key = getFieldName(field);
             if (key.equals("-")) {
@@ -73,7 +75,7 @@ public class GoStructToJSONAction extends AnAction {
         }
     }
 
-    private Object arrangeType(PsiElement navPsiElement, @Nullable GoType tp) throws UnsupportedDataTypeException {
+    private Object arrangeType(PsiElement navPsiElement, @Nullable GoType tp) throws Exception {
         if (tp instanceof GoStructTypeImpl) {
             var out = new HashMap<>();
             var fields = ((GoStructTypeImpl) tp).getFieldDeclarationList();
@@ -84,7 +86,7 @@ public class GoStructToJSONAction extends AnAction {
                 return null;
             }
             if (Objects.equals(eleTp.getText(), "byte")) {
-                return "";
+                return "str_val";
             } else {
                 var list = new ArrayList<>();
                 list.add(arrangeType(navPsiElement, eleTp));
@@ -92,8 +94,8 @@ public class GoStructToJSONAction extends AnAction {
             }
         } else if (tp instanceof GoMapTypeImpl) {
             var kt = ((GoMapTypeImpl) tp).getKeyType();
-            if (!GoTypeUtil.isBasicType(kt, navPsiElement)) {
-                throw new UnsupportedDataTypeException();
+            if (!GoTypeUtil.isIntegerType(kt, navPsiElement) && !GoTypeUtil.isString(kt, navPsiElement)) {
+                throw new Exception();
             }
             var vt = ((GoMapTypeImpl) tp).getValueType();
             var out = new HashMap<>();
@@ -104,10 +106,11 @@ public class GoStructToJSONAction extends AnAction {
         } else if (tp instanceof GoInterfaceTypeImpl) {
             return null;
         } else {
+            tp = Objects.requireNonNull(tp).getUnderlyingType(navPsiElement);
             if (GoTypeUtil.isNumericType(tp, navPsiElement)) {
                 return 0;
             } else if (GoTypeUtil.isString(tp, navPsiElement)) {
-                return "";
+                return "str_val";
             }
             return null;
         }
