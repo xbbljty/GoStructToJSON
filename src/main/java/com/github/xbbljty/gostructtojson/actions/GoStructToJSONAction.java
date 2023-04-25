@@ -75,6 +75,7 @@ public class GoStructToJSONAction extends AnAction {
         }
     }
 
+
     private Object arrangeType(PsiElement navPsiElement, @Nullable GoType tp) throws Exception {
         if (tp instanceof GoStructTypeImpl) {
             var out = new HashMap<>();
