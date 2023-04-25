@@ -1,14 +1,19 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.xbbljty.gostructtojson</id>
-    <name>GoStructToJSON</name>
-    <vendor>xbbljty</vendor>
+    <name>Go Struct To Json</name>
+    <vendor email="icecreamy@foxmail.com">icecreamy</vendor>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.go</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
+    <description>
+        <![CDATA[
+            Go Struct To Json is a plugin tools for translate go struct to json string on debug.
+        ]]>
+    </description>
 
+    <resource-bundle>messages.MyBundle</resource-bundle>
     <actions>
         <action id="GoStructToJSONAction" class="com.github.xbbljty.gostructtojson.actions.GoStructToJSONAction" text="To JSON String..."
                 description="Go struct to Json formatted string">
